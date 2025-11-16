@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MARUWAVEX</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background: black;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+#wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* PNG タイトル画像 */
+#titleImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: black;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+/* ボタン（JSで位置調整される） */
+.btn {
+  position: absolute;
+
+  /* デバッグ時にここを書き換える */
+  background: rgba(0, 0, 0, 0); /* 緑色の半透明 */
+  /*border: 1px solid red;*/
+
+  z-index: 10;
+}
+
+/* デバッグ用透明スイッチ */
+#debugSwitch {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  opacity: 0; /* 完全透明 */
+}
+</style>
+</head>
+
+<body>
+
+<audio id="startSE" src="starton.mp3"></audio>
+
+<div id="wrap">
+
+  <!-- PNG タイトルに変更 -->
+  <img id="titleImage" src="title.png">
+
+  <!-- デバッグスイッチ -->
+  <div id="debugSwitch"></div>
+
+  <!-- data-x/y/w/h は画像内部の「相対座標」 -->
+  <div class="btn jp" data-x="0.07" data-y="0.81" data-w="0.17" data-h="0.11" onclick="go('jp')"></div>
+  <div class="btn cn" data-x="0.30" data-y="0.81" data-w="0.17" data-h="0.11" onclick="go('cn')"></div>
+  <div class="btn kr" data-x="0.53" data-y="0.81" data-w="0.17" data-h="0.11" onclick="go('kr')"></div>
+  <div class="btn en" data-x="0.75" data-y="0.81" data-w="0.17" data-h="0.11" onclick="go('en')"></div>
+
+  <!-- edgeX ロゴクリック範囲 -->
+  <div class="btn edgex"
+       data-x="0.76"
+       data-y="0.08"
+       data-w="0.22"
+       data-h="0.13"
+       onclick="openEdgeX()">
+  </div>
+
+</div>
+
+<script>
+
+/* 言語遷移 */
+function go(lang) {
+  const map = {
+    jp: "./japanese/j-index.html",
+    cn: "./chinese/c-index.html",
+    kr: "./korean/k-index.html",
+    en: "./english/e-index.html"
+  };
+
+  const se = new Audio("starton.mp3");
+  try { se.currentTime = 0; } catch {}
+  se.play();
+
+  setTimeout(() => {
+    window.location.href = map[lang];
+  }, 700);
+}
+
+function openEdgeX() {
+  window.open("https://pro.edgex.exchange/referral/741631246", "_blank");
+}
+
+
+/* ▼ ボタンの当たり判定を「画像の実表示領域」に合わせて補正 */
+function updateButtons() {
+  const img = document.getElementById("titleImage");
+  const buttons = document.querySelectorAll(".btn");
+
+  const rect = img.getBoundingClientRect();
+  const containerW = rect.width;
+  const containerH = rect.height;
+
+  const imgW = img.naturalWidth;
+  const imgH = img.naturalHeight;
+  const imgRatio = imgW / imgH;
+  const containerRatio = containerW / containerH;
+
+  let displayW, displayH, offsetX, offsetY;
+
+  if (containerRatio > imgRatio) {
+    // 横長 → 上下黒帯
+    displayH = containerH;
+    displayW = displayH * imgRatio;
+    offsetX = rect.left + (containerW - displayW) / 2;
+    offsetY = rect.top;
+  } else {
+    // 縦長 → 左右黒帯
+    displayW = containerW;
+    displayH = displayW / imgRatio;
+    offsetX = rect.left;
+    offsetY = rect.top + (containerH - displayH) / 2;
+  }
+
+  buttons.forEach(btn => {
+    const x = parseFloat(btn.dataset.x);
+    const y = parseFloat(btn.dataset.y);
+    const w = parseFloat(btn.dataset.w);
+    const h = parseFloat(btn.dataset.h);
+
+    btn.style.left   = `${offsetX + displayW * x}px`;
+    btn.style.top    = `${offsetY + displayH * y}px`;
+    btn.style.width  = `${displayW * w}px`;
+    btn.style.height = `${displayH * h}px`;
+  });
+}
+
+window.addEventListener("resize", updateButtons);
+window.addEventListener("load", updateButtons);
+
+
+
+</script>
+
+</body>
+</html>

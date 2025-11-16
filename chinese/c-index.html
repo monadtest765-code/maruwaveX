@@ -1,0 +1,2683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>MARU WAVE X – 1bpsの波を乗りこなせ！</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #gameCanvas {
+      display: block;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: white;
+      text-align: center;
+      pointer-events: auto;
+      z-index: 50; 
+    }
+    
+    /* 🌟 スタート画面とゲームオーバー画面のコンテナスタイル */
+    #startMsg, #gameOverMsg {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* 🌟 既存のテキスト要素を非表示化 */
+    #startMsg h1, #startMsg p, #gameOverMsg h1, #finalScore {
+        display: none; 
+    }
+    
+    /* 🌟 新しい画像ボタンコンテナ */
+    .image-button-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        /* スタート画像を画面の中心付近に配置するための調整 */
+        top: -5vh; 
+    }
+    
+    /* ************************************************************ */
+    /* ★★★ STARTボタンのスタイル ★★★ */
+    /* ************************************************************ */
+
+    #startImage {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    /* 🌟 汎用ボタンとデバッグボタンのスタイル */
+    #overlay button {
+      font-size: 2.2vmin;
+      padding: 0.5em 1.5em;
+      border: none;
+      border-radius: 8px;
+      background: #00aaff;
+      color: white;
+      cursor: pointer;
+      pointer-events: auto;
+      margin: 5px; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.5em;
+    }
+    
+    #overlay #debugButton {
+      width: 50px;     /* ← 横幅 */
+      height: 40px;     /* ← 高さ */
+      font-size: 1.4vmin;  /* ← 文字の大きさ */
+      padding: 0;       /* ← 内側の余白 */
+      /* display: none !important;  */ /* ★ デバッグスイッチ ★ */
+      opacity: 0;           /* 完全透明 */
+      pointer-events: auto; /* クリックは通す */
+      opacity: 0;            /* 完全透明 */
+      pointer-events: auto;  /* クリックは通す */
+      cursor: default;       /* ← カーソルを普通の矢印のままにする */
+    }
+
+    /* 🌟 ゲームオーバー画面のスタイル */
+    #gameOverImageContainer {
+        position: relative; 
+        width: 70vmin; 
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #gameOverImage {
+        width: 100%;
+        height: auto;
+        display: block;
+        margin-bottom: 0px; 
+    }
+
+    /* 🌟 ゲームオーバー画面内のRETRY/TWEETボタンの配置 */
+    .gameOverButtonContainer {
+        position: absolute;
+        bottom: 9%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        height: 90px;
+        pointer-events: none;
+    }
+
+    /* ************************************************************ */
+    /* ★★★ RETRY/TWEETボタンのヒットボックス ★★★ */
+    /* ************************************************************ */
+    #restartButton {
+        position: absolute;
+        top: 0;
+        left: calc(60% - 200px); 
+        width: 140px; 
+        height: 54px;
+        background: transparent;
+        border: none;
+        padding: 0;
+        margin: 0;
+        min-height: 0;
+        cursor: pointer;
+        display: block;
+        pointer-events: all;
+    }
+
+    #tweetButton {
+        position: absolute;
+        top: 0;
+        left: calc(4% + 200px); 
+        width: 140px; 
+        height: 56px;
+        background: transparent;
+        border: none;
+        padding: 0;
+        margin: 0;
+        min-height: 0;
+        cursor: pointer;
+        display: block;
+        pointer-events: all;
+        border-radius: 10px; 
+    }
+
+    
+    /* ************************************************************ */
+    /* ★★★ スコアバーのスタイル ★★★ */
+    /* ************************************************************ */
+    
+    /* 1. スコアバー全体のコンテナサイズ（微調整が必要であればここを調整） */
+    #scoreBarContainer {
+        position: absolute;
+        bottom: 88vh;        /* 画面下からの距離 */
+        left: 50%;
+        transform: translateX(-50%);
+
+        width: 30vmin;      /* あなたの画像に合わせた横幅 */
+        height: 12vmin;     /* 高さ（画像の縦比に合わせ調整済み） */
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        pointer-events: none; /* コインやジャンプ操作を邪魔させない */
+
+        z-index: 20;
+    }
+
+    #scoreBarImage {
+        width: 300%;
+        height: 300%;
+        object-fit: contain;
+        display: block;
+    }
+
+    /* 2. ゲームが出力する数字だけを配置し、微調整を容易にする */
+
+    #scoreDisplay {
+        /* Star Coin (左端) のスコア値 */
+        position: absolute;
+        left: 14%; /* ← ★ 調整ポイント: Star Coin アイコンの右横に合わせる ★ */
+        color: white;
+        font-size: 2.2vmin; /* ← ★ 調整ポイント: 文字サイズ ★ */
+        white-space: nowrap;
+        transform: translateY(-50%);
+        top: 50%; /* スコアバーの縦方向中央 */
+    }
+
+    #edgeCoinDisplay {
+        /* EdgeXアイコン (中央) の X/10 */
+        position: absolute;
+        left: 45%; /* ← ★ 調整ポイント: EdgeXアイコンの右横に合わせる ★ */
+        color: #00ff00; 
+        font-size: 2.2vmin; /* ← ★ 調整ポイント: 文字サイズ ★ */
+        white-space: nowrap;
+        transform: translateY(-50%);
+        top: 50%; /* スコアバーの縦方向中央 */
+    }
+
+    #sealLifeDisplay {
+        /* ライフアイコン (右端) の横の +X 表示 (ボーナスライフのみ表示) */
+        position: absolute;
+        right: 13%; /* ← ★ 調整ポイント: 最後のライフアイコンの右横に合わせる ★ */
+        color: white; 
+        font-size: 2.2vmin; /* ← ★ 調整ポイント: 文字サイズ ★ */
+        display: block; 
+        white-space: nowrap;
+        transform: translateY(-50%);
+        top: 50%; /* スコアバーの縦方向中央 */
+        /* ライフが3以下の場合、初期状態では非表示 */
+        display: none; 
+    }
+    /* ************************************************************ */
+    /* ★★★ スコアバーのスタイル終わり ★★★ */
+    /* ************************************************************ */
+
+    
+    #videoOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.9);
+      display: none; 
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #videoPlayer {
+      max-width: 90%;
+      max-height: 90%;
+    }
+    #skipButton {
+        position: absolute;
+        bottom: 10%;
+        right: 5%;
+        font-size: 2vmin;
+        padding: 10px 20px;
+        background: #999;
+        border-radius: 4px;
+        z-index: 1001; 
+    }
+    
+    /* START画像のコンテナ */
+    #startImageContainer {
+        position: relative;
+        width: 70vmin;
+        max-width: 500px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* ボタンコンテナ */
+    .startButtonContainer {
+        position: absolute;
+        bottom: 3%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%; 
+        display: flex;
+        justify-content: center;
+    }
+
+    /* STARTボタン（透明ヒットボックス） */
+    #startButton {
+        width: 150%; 
+        height: 25vmin;
+        cursor: pointer;
+    }
+
+    /* debug ボタンは START画像の外に配置する */
+    .debugSeparate {
+        margin-top: 20px;
+    }
+    /* ★ START / RETRY / TWEET は強制で透明にする */
+    #startButton,
+    #restartButton,
+    #tweetButton {
+        background: transparent !important;
+        border: none !important;
+    }
+
+
+  
+
+#scoreBar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding: 15px 40px;
+
+    background: rgba(0, 0, 30, 0.4);
+    border: 3px solid rgba(160,130,255,0.8);
+    border-radius: 25px;
+    z-index: 9999;
+}
+
+#scoreBar .icon {
+    width: 48px;
+    height: 48px;
+}
+
+#scoreBar span {
+    font-size: 40px;
+    color: #00ff00;
+    font-weight: 900;
+    text-shadow: 2px 2px 8px black;
+}
+/* ==== Play / Pause ボタン ==== */
+.pp-btn {
+    width: 70px;
+    height: 70px;
+    border: 4px solid #fff;     /* ← 白 */
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+/* === Pause ボタン中央揃え（正しい版） === */
+#pauseButton.pp-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* ▶ icon 中央配置 */
+#pauseButton .play,
+#pauseButton .pause {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* pause の縦棒を中央に寄せる */
+#pauseButton .pause div {
+    margin: 0 3px;
+}
+
+
+
+/* ▶ Play（三角）白アイコン */
+.pp-btn .play {
+    width: 0;
+    height: 0;
+    border-left: 28px solid #fff;      /* ← 白に変更 */
+    border-top: 18px solid transparent;
+    border-bottom: 18px solid transparent;
+}
+
+/* Ⅱ Pause（縦棒2本）白アイコン */
+.pp-btn .pause {
+    display: flex;
+    gap: 10px;
+}
+
+.pp-btn .pause div {
+    width: 12px;
+    height: 36px;
+    background: #fff;                 /* ← 白に変更 */
+}
+#pauseOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    color: white;
+    font-size: 64px;
+    font-weight: 900;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    display: none;
+    pointer-events: none;
+}
+
+/* ===== エンディング専用スタイル ===== */
+
+.endingText {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 5vmin;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #fff;
+    text-shadow:
+        0 0 12px rgba(255,255,255,0.9),
+        0 0 24px rgba(255,200,0,0.6),
+        0 0 48px rgba(255,150,0,0.4);
+}
+
+.endingSub {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 4vmin;
+    font-weight: 800;
+    color: #fff;
+    margin-top: 10px;
+    text-shadow:
+        0 0 10px rgba(255,255,255,0.8),
+        0 0 20px rgba(255,200,0,0.5);
+}
+
+.tweetBtn {
+    margin-top: 30px;
+    padding: 12px 32px;
+    border: 3px solid #fff;
+    border-radius: 16px;
+    font-size: 3.5vmin;
+    font-weight: bold;
+    text-decoration: none;
+    color: white;
+    background: rgba(255,255,255,0.05);
+    box-shadow:
+        0 0 20px rgba(255,255,255,0.3),
+        inset 0 0 10px rgba(255,255,255,0.3);
+}
+.tweetBtn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+
+<div id="pauseButton" class="pp-btn">
+    <div class="icon pause"><div></div><div></div></div>
+</div>
+<div id="pauseOverlay">PAUSED</div>
+
+
+
+<!-- ★ スコアバー（score.png）を復活 ★ -->
+<div id="scoreBarContainer">
+<img id="scoreBarImage" src="images/score.png">
+</div>
+<!-- ★ ここまで ★ -->
+
+
+
+<div id="overlay">
+  <div class="message" id="startMsg">
+    
+    <div id="startImageContainer">
+        <img id="startImage" src="images/start.png" alt="スタート">
+
+        <div class="startButtonContainer">
+            <button id="startButton"></button>
+        </div>
+    </div>
+
+    <button id="debugButton" class="debugSeparate">デバッグモードでスタート</button>
+   
+
+
+  </div> <div class="message" id="gameOverMsg" style="display:none;">
+      <h1>ゲームオーバー</h1>
+      <p id="finalScore"></p> 
+      <div id="gameOverImageContainer">
+          <img id="gameOverImage" src="images/gameover.png" alt="ゲームオーバー画面">
+          <div class="gameOverButtonContainer">
+              <button id="restartButton"></button>
+              <a id="tweetButton" href="#" target="_blank"></a>
+          </div>
+      </div>
+  </div> <div class="message" id="pauseMsg" style="display:none;">
+      <h1>WARNING! ダメージ</h1>
+      <p>残機が減りました。画面のどこでもクリックまたはタップして復帰してください。</p>
+  </div>
+
+  <div class="message" id="infoMsg" style="display:none;"></div>
+
+</div>
+
+<audio id="coinSound" src="sounds/se/coin.wav" preload="auto"></audio>
+<audio id="hitSound" src="sounds/se/hit.wav" preload="auto"></audio>
+<audio id="bgm" src="sounds/bgm/edgeX07.mp3" preload="auto" loop></audio>
+
+
+<div id="videoOverlay">
+  <video id="videoPlayer" preload="auto">
+    お使いのブラウザは動画タグをサポートしていません。
+  </video>
+  <button id="skipButton">SKIP</button>
+</div>
+
+<img id="edgecoinImg" src="images/edgecoin.png" style="display:none;">
+
+<script>
+const pauseBtn = document.getElementById("pauseButton");
+
+// ★ Pause ボタンを押した瞬間、mousedown を完全に止める（最重要）
+pauseBtn.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+});
+
+pauseBtn.addEventListener("click", (e) => {
+    ignoreNextJump = true;
+
+    isGamePaused = !isGamePaused;
+
+    if (isGamePaused) {
+        pauseGame();
+        pauseBtn.innerHTML = `<div class="icon play"></div>`;
+    } else {
+        resumeGame();
+        pauseBtn.innerHTML = `
+            <div class="icon pause"><div></div><div></div></div>
+        `;
+    }
+});
+
+// Canvas and context
+const canvas = document.getElementById('gameCanvas');
+const ctx = document.getElementById('gameCanvas').getContext('2d');
+
+// Overlay elements
+const overlay = document.getElementById('overlay');
+const startMsg = document.getElementById('startMsg');
+const gameOverMsg = document.getElementById('gameOverMsg');
+const infoMsg = document.getElementById('infoMsg');
+// 🌟 修正: 画像ボタンのIDを使用
+const debugButton = document.getElementById('debugButton'); 
+const restartButton = document.getElementById('restartButton');
+const tweetButton = document.getElementById('tweetButton');
+const finalScoreElem = document.getElementById('finalScore');
+
+const pauseMsg = document.getElementById('pauseMsg');
+const skipButton = document.getElementById('skipButton');
+
+const GOAL_COUNT = 10;
+
+// 🌟 画像要素の定義とプリロードソース
+const images = {};
+const imageSources = {
+    bgImg: 'images/background.png',
+    maruImg: 'images/maru_new.png', 
+    maruYarareImg: 'images/yarare01.png', 
+    maruIdle1: 'images/maru_new.png', 
+    maruIdle2: 'images/maru_idle2.png', 
+    maruJumpImg: 'images/maru_jump.png', 
+    edgecoinImg: 'images/edgecoin.png',
+    shincoinSheet: 'images/shincoin2.png',
+    startImg: 'images/start.png',
+    nanazugaraImg: 'images/nanazugara.png',
+    gameOverImgFile: 'images/gameover.png', 
+    // 修正: sealLifeImg はプリロード画像としては残すが、ゲーム内での動的表示はしない
+    
+};
+
+for (const key in imageSources) {
+    images[key] = new Image();
+    images[key].src = imageSources[key];
+}
+
+const maruIdleFrames = [images.maruIdle1, images.maruIdle2];
+const edgecoinImg = images.edgecoinImg;
+const shincoinImg = images.shincoinImg; 
+let idleFrameIndex = 0;
+let lastIdleSwitch = 0;
+const idleFrameInterval = 200; 
+
+// Audio and Video elements
+const bgm = document.getElementById('bgm');
+const coinSound = document.getElementById('coinSound');
+const hitSound = document.getElementById('hitSound');
+const videoOverlay = document.getElementById('videoOverlay');
+const videoPlayer = document.getElementById('videoPlayer');
+const nanaSound = new Audio("sounds/se/nanaon.mp3");
+nanaSound.volume = 1.0;
+
+
+
+// Audio Context setup
+let audioCtx = null;
+let analyser = null;
+let frequencyData = null;
+
+// Game variables
+let gameState = 'start'; 
+let maru = { x: 0, y: 0, radius: 0, vy: 0, currentImage: images.maruIdle1 }; 
+const FPS = 60;
+const FRAME_TIME = 1000 / FPS;
+const GRAVITY = 0.3;
+const JUMP = -7;
+let obstacles = [];
+let spawnInterval = 2500;
+let lastSpawn = 0;
+let coins = []; 
+let ignoreNextJump = false;   // ← 追加
+
+
+
+let coinSpawnInterval = 1500; 
+let lastCoinSpawn = 0;
+let score = 0;
+let bestScore = 0;
+let messages = [
+  {threshold: 30, text: 'edgeX 是一个由 Amber Group 在 2023 年孵化的高性能订单簿式永续期货交易所。'},
+  {threshold: 60, text: 'edgeX 是一个利用以太坊 Layer 2 技术的高性能去中心化永续合约交易所 (Perp DEX)。'},
+  {threshold: 120, text: '用户可以在 Web 和移动端进行交易，并具备子账户和跨链功能。'},
+  {threshold: 150, text: '目前尚未发行代币，但在 TGE（代币生成事件）临近之际，社区活跃度正在高涨。'},
+  {threshold: 180, text: '深厚的流动性和低延迟的订单簿匹配机制，提供了媲美 CEX（中心化交易所）的交易体验。'},
+  {threshold: 210, text: 'edgeX 的路线图目标是构建自己的 Layer 2 链，并计划扩展其链上交易产品。'},
+  {threshold: 240, text: 'edgeX 采用 StarkWare 的 zk-rollup 技术，实现了快速且低成本的链上结算。'},
+  {threshold: 270, text: 'edgeX 在所有尚未发行代币的链中，手续费收入排名第一。'},
+  {threshold: 300, text: 'edgeX 是下一代最强的 PERP DEX，简而言之，就是“神”一样的存在。'}
+];
+let nextMessageIndex = 0;
+let isDebugMode = false;
+let isGamePaused = false;  // ★ ゲームが一時停止中かどうか
+let isInvincible = false;
+let invincibilityEndTime = 0;
+const INVINCIBILITY_DURATION = 2500;
+
+let lives = 3; 
+const MAX_LIVES = 3; 
+let totalRegularCoinsCollected = 0; 
+const COINS_PER_LIFE = 100; 
+
+let edgeCoinCollectedCount = 0; 
+let last9thCoinCollectedTime = null; 
+const COIN_10_TRIGGER_TIME = 100000; 
+
+let pendingEdgeBonus = false;        // EdgeCoin の動画終了後の付与
+let pendingNanaBonus = null;         // NanaCoin の動画終了後の付与内容
+
+
+// ★ EdgeCoin 10枚目用カウントダウン変数
+let edgeCountdown = 0;
+let edgeCountdownEndTime = null;
+
+// ⭐ 【追加】EdgeCoin 100% 出現デバッグスイッチ
+let forceEdgeCoin100 = false;
+
+
+let hasStarted = false;
+const BASE_SPEED_PER_WIDTH = 0.002;
+const SPEED_SCALE_TIME = 15000;
+let gameStartTime = null;
+let stars = [];
+
+let currentVideoQueue = []; 
+let videoPauseTime = 0; 
+let shincoinFrameIndex = 0;
+let shincoinFrameTimer = 0;
+const shincoinFrameCount = 8;
+
+
+
+
+// ---------------------------------------------------------------------------
+// 🎨✨ Added variables for rich effects
+// ---------------------------------------------------------------------------
+// Score pop animation
+let scorePopScale = 1;
+let scorePopTarget = 1;
+let scorePopSpeed = 0.15;
+// Score combo tracking
+let lastScoreUpdateTime = 0;
+let scoreStreakCount = 0;
+let rainbowEffectEnd = 0;
+// EdgeCoin flash for central counter
+let edgeCoinFlashEnd = 0;
+// Life shake animation
+let lifeShakeEnd = 0;
+let lifeShakeAmplitude = 0;
+// Maru flash effect
+let maruFlashEnd = 0;
+// Afterimage storage
+let afterimages = [];
+// Particle effects storage
+let particles = [];
+// Star brightness flash
+let starFlashEnd = 0;
+
+// Utility and Resize functions (前回のコードと同一です)
+function lightenColor(hex, factor) { 
+  const col = parseInt(hex.replace('#', ''), 16);
+  let r = (col >> 16) & 0xff;
+  let g = (col >> 8) & 0xff;
+  let b = col & 0xff;
+  r = Math.round(r + (255 - r) * factor);
+  g = Math.round(g + (255 - g) * factor);
+  b = Math.round(b + (255 - b) * factor);
+  const newCol = (1 << 24) | (r << 16) | (g << 8) | b;
+  return '#' + newCol.toString(16).slice(1);
+}
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initStars();
+  maru.radius = canvas.height * 0.05;
+  maru.x = canvas.width * 0.2;
+  if (gameState === 'start' || gameState === 'gameover' || gameState === 'paused_after_hit') {
+    maru.y = canvas.height / 2;
+  }
+  if (gameState === 'start') {
+     drawBackground(performance.now());
+     drawMaru(performance.now());
+  }
+}
+window.addEventListener('resize', resize);
+resize();
+
+// 🌟 修正: ライフ表示を数字（+X）のみに変更
+function updateLivesDisplay() {
+  // lives > MAX_LIVES (3) の場合のみ、「+X」という形でボーナスライフを表示
+  if (lives > MAX_LIVES) {
+     
+  } else {
+      // ライフが3以下の場合、score.png内のアイコンに任せるため、数字は非表示
+      
+  }
+}
+
+// 🌟 修正: EdgeCoin表示の更新（新しいIDを使用）
+function updateEdgeCoinDisplay() {
+    
+}
+
+function resumeGameFromVideo() {
+
+pauseBtn.style.display = "block";
+
+    console.log("=== resumeGameFromVideo 起動 ===");
+
+    if (edgeCoinCollectedCount === GOAL_COUNT) {
+        startEndingSequence();
+        return;
+ }
+
+
+
+    console.log("=== resumeGameFromVideo 起動 ===");
+    console.log("pendingEdgeBonus:", pendingEdgeBonus);
+    console.log("edgeCoinCollectedCount:", edgeCoinCollectedCount);
+
+
+        
+    // ★ まだ再生すべき動画キューが残っている場合
+    if (currentVideoQueue.length > 0) {
+        const nextVideo = currentVideoQueue.shift();
+        playVideo(nextVideo);
+        return;
+    }
+    
+    // ★ 動画終了後の後処理
+    videoPlayer.onended = null;
+    videoOverlay.style.display = 'none';
+    gameState = 'playing';
+
+    // ------------------------------------------------------
+    // ★★★★★ EdgeCoin の後付け付与（動画終了後に反映） ★★★★★
+    // ------------------------------------------------------
+    if (pendingEdgeBonus) {
+
+        edgeCoinCollectedCount++;
+        updateEdgeCoinDisplay();
+
+        // ライフ +1
+        if (lives < MAX_LIVES + 10) {
+            lives += 1;
+            updateLivesDisplay();
+        }
+
+        // 9枚目 → カウントダウン開始
+        if (edgeCoinCollectedCount === 9) {
+            last9thCoinCollectedTime = performance.now();
+            edgeCountdownEndTime =
+                last9thCoinCollectedTime + COIN_10_TRIGGER_TIME;
+        }
+
+        // 10枚目 → エンディング
+if (edgeCoinCollectedCount === GOAL_COUNT) {
+
+    gameState = 'ending_trigger';
+
+    if (bgm) {
+        bgm.pause();
+        bgm.currentTime = 0;
+    }
+
+    // ★★★ 先にエンディングへ ★★★
+    startEndingSequence();
+
+    // ★★★ ここで初めて pendingEdgeBonus を解除 ★★★
+    pendingEdgeBonus = false;
+
+    return;
+}
+}
+
+
+    // ------------------------------------------------------
+    // ★★★★★ NanaCoin の後付け付与（動画終了後に反映） ★★★★★
+    // ------------------------------------------------------
+    if (pendingNanaBonus) {
+
+        // 大量ライフ付与
+        lives += pendingNanaBonus.life;
+        updateLivesDisplay();
+
+        // coinzoroi の場合は EdgeCoin 扱い
+        if (pendingNanaBonus.isEdge) {
+            edgeCoinCollectedCount++;
+            updateEdgeCoinDisplay();
+        }
+
+        pendingNanaBonus = null;
+    }
+
+
+
+    
+    // ★ 動画中の経過時間をゲームタイマーへ反映
+    const videoDuration = performance.now() - videoPauseTime;
+    if (gameStartTime !== null) {
+        gameStartTime += videoDuration;
+    }
+    
+    // ★ 無敵時間を付与
+    isInvincible = true;
+    invincibilityEndTime = performance.now() + INVINCIBILITY_DURATION;
+
+    // ------------------------------------------------------
+    // 🔥【ここが最大の修正点】 BGM を確実に復帰させる
+    // ------------------------------------------------------
+    try {
+        if (bgm) {
+            // BGM の現在位置が NaN / undefined の場合防止
+            if (isNaN(bgm.currentTime)) {
+                bgm.currentTime = 0;
+            }
+            // 音量を適正に戻す
+            bgm.volume = 0.6;
+
+            // file:// でも localhost でも GitHub Pages でも全部再生される
+            bgm.play().catch(err => {
+                console.warn("BGM resume blocked:", err);
+            });
+        }
+    } catch (err) {
+        console.warn("BGM resume fatal error:", err);
+    }
+
+    // ★ ゲームループ復帰
+    lastTimestamp = performance.now();
+    if (animFrameId === null) {
+        animFrameId = window.requestAnimationFrame(gameLoop);
+    }
+}
+
+// ------------------------------------------------------
+// ★★★ エンディング専用：動画を即再生する関数 ★★★
+// ------------------------------------------------------
+function playVideoDirect(src) {
+    videoPlayer.src = src;
+
+    // ★ 中央配置（通常ムービーと同じ位置へ強制）
+    videoOverlay.style.display = 'block';
+    videoPlayer.style.display = 'block';
+
+    // 位置を強制リセット（CSS上書き）
+    videoPlayer.style.position = "absolute";
+    videoPlayer.style.left = "50%";
+    videoPlayer.style.top = "50%";
+    videoPlayer.style.transform = "translate(-50%, -50%)";
+    videoPlayer.style.width = "80%";
+    videoPlayer.style.height = "auto";
+
+    videoPlayer.play();
+}
+
+function playVideo(videoFileName) {
+videoPlayer.onplay = () => {
+    pauseBtn.style.display = "none";
+};
+
+  videoPlayer.innerHTML = `<source src="movies/${videoFileName}" type="video/mp4">`;
+  videoPlayer.load(); 
+  
+
+  // ★ 元の SKIP 判定（plus1.mp4 は SKIP禁止）
+  if (videoFileName === 'end.mp4') {
+      skipButton.style.display = 'none';
+  } else {
+      skipButton.style.display = 'block';
+  }
+
+  // ★ ナナ図柄動画は SKIP禁止
+  const nanaVideos = [
+    'coinzoroi.mp4',
+    'maruhazure.mp4',
+    'maruzoroi01.mp4',
+    'maruzoroi02.mp4',
+    'maruzoroi03.mp4',
+    'nanazoroi.mp4',
+    'fleeze.mp4'
+  ];
+  if (nanaVideos.includes(videoFileName)) {
+    skipButton.style.display = 'none';
+  }
+
+  if (animFrameId !== null) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }  
+  if (bgm) {
+    bgm.pause();
+  }
+
+  videoPauseTime = performance.now();
+  
+  gameState = 'video';
+  videoOverlay.style.display = 'flex';
+  videoPlayer.currentTime = 0; 
+  videoPlayer.play().catch(e => console.error(`Video (${videoFileName}) play failed:`, e));
+
+  videoPlayer.onended = () => {
+    resumeGameFromVideo(); 
+  };
+}
+
+function skipVideo() {
+    if (gameState === 'video') {
+        videoPlayer.pause(); 
+        resumeGameFromVideo(); 
+    }
+}
+
+function jump() {
+
+  // ★ まず Pause 中は絶対にジャンプ無効
+  if (isGamePaused) return;
+
+  // ★ Pauseボタン直後のジャンプ誤作動を1回だけ無視
+  if (ignoreNextJump) {
+      ignoreNextJump = false;
+      return;
+  }
+
+  // ★ 元々のジャンプロジック（あなたのコードをそのまま）
+  if (gameState === 'playing') {
+      if (!hasStarted) {
+        hasStarted = true;
+        maru.vy = JUMP;
+        gameStartTime = performance.now();
+        
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(e => console.error("AudioContext resume failed on first jump:", e));
+        }
+      } else {
+        maru.vy = JUMP;
+      }
+
+      spawnAfterimages();
+  }
+}
+// ★★★ ゲーム一時停止処理 ★★★
+function pauseGame() {
+    isGamePaused = true;
+
+    // 描画ループを止める
+    if (animFrameId !== null) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+    }
+
+    // オーバーレイ表示
+    const overlay = document.getElementById("pauseOverlay");
+    overlay.style.display = "flex";
+}
+
+function resumeGame() {
+    lastTimestamp = performance.now();
+    isGamePaused = false;
+
+    const overlay = document.getElementById("pauseOverlay");
+    overlay.style.display = "none";
+
+    // ループ再開
+    animFrameId = requestAnimationFrame(gameLoop);
+}
+
+
+
+function initGame(debug = false) {
+  isDebugMode = debug; 
+  
+  gameState = 'playing';
+  lastTimestamp = null;
+  maru.radius = canvas.height * 0.05;
+  maru.x = canvas.width * 0.2;
+  maru.y = canvas.height / 2;
+  maru.vy = 0;
+  maru.currentImage = images.maruIdle1; 
+  obstacles = [];
+  lastSpawn = 0;
+  coins = [];
+  lastCoinSpawn = 0;
+  score = 0;
+  nextMessageIndex = 0;
+  hasStarted = false;
+  
+  lives = MAX_LIVES; 
+  totalRegularCoinsCollected = 0;
+  isInvincible = false; 
+  invincibilityEndTime = 0;
+  
+  edgeCoinCollectedCount = 0; 
+  last9thCoinCollectedTime = null; 
+  updateEdgeCoinDisplay(); 
+  
+  currentVideoQueue = []; 
+  
+  infoMsg.style.display = 'none';
+  startMsg.style.display = 'none';
+  gameOverMsg.style.display = 'none';
+  pauseMsg.style.display = 'none'; 
+  overlay.style.pointerEvents = 'none';
+  
+  updateLivesDisplay();
+  
+  const isFileProtocol = window.location.protocol === 'file:' || window.location.protocol === '';
+  if (bgm) {
+   bgm.currentTime = 0;
+   bgm.volume = 0.6;
+   const playPromise = bgm.play();
+   if (playPromise !== undefined) {
+     playPromise
+       .then(() => console.log("🎵 BGM started"))
+       .catch(err => console.warn("BGM play blocked (will retry on user gesture):", err));
+  }
+}
+
+  setupAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(e => console.error("AudioContext resume failed in initGame:", e));
+  }
+  
+  animFrameId = window.requestAnimationFrame(gameLoop);
+  initStars();
+}
+
+function spawnObstacle() {
+  const gapHeight = canvas.height * 0.36;
+  const minGapY = canvas.height * 0.2;
+  const maxGapY = canvas.height - gapHeight - canvas.height * 0.2;
+  const gapY = minGapY + Math.random() * (maxGapY - minGapY);
+  const width = canvas.width * 0.12;
+  const amplitude = canvas.height * (0.05 + Math.random() * 0.05);
+  const phase = Math.random() * Math.PI * 2;
+  const wickTopRatio = 0.05 + Math.random() * 0.15;
+  const wickBottomRatio = 0.05 + Math.random() * 0.15;
+  const topWickColor = lightenColor('#e44a4a', 0.4);
+  // Fix typo in color code (missing digit) so that lightenColor processes a valid 6‑digit hex.
+  const bottomWickColor = lightenColor('#2ca24c', 0.4);
+
+  obstacles.push({
+    x: canvas.width + width,
+    width,
+    baseGapY: gapY,
+    gapHeight,
+    amplitude,
+    phase,
+    passed: false,
+    wickTopRatio,
+    wickBottomRatio,
+    topWickColor,
+    bottomWickColor
+  });
+}
+
+function spawnCoin() {
+  const coinRadius = maru.radius * 0.8;
+
+  let isEdgeCoin = false;
+  let isNanaCoin = false;
+
+  let probability = 0;
+  const count = edgeCoinCollectedCount;
+
+  // ★★★★★ まず最初に「現在のナナ図柄数」を確定取得する ★★★★★
+  const nanaCountOnScreen = coins.filter(
+      c => c.isNanaCoin && !c.collected
+  ).length;
+  // ★★★★★ ここまで（これにより判定がズレない） ★★★★★
+
+  const edgeCoinOnScreen = coins.some(
+      coin => coin.isEdgeCoin && !coin.collected
+  );
+
+  if (count < GOAL_COUNT && !edgeCoinOnScreen) {
+
+      if (forceEdgeCoin100) {
+          probability = 1.0;
+
+      } else if (count === 9) {
+          const timeElapsed = performance.now() - last9thCoinCollectedTime;
+          if (last9thCoinCollectedTime !== null && timeElapsed >= COIN_10_TRIGGER_TIME) {
+              probability = 1.0;
+          } else {
+              probability = 0.0;
+          }
+
+      } else if (count === 0) {
+          probability = 1.0;
+
+      } else if (count === 1) {
+          probability = 0.50;
+
+      } else if (count === 2 || count === 3) {
+          probability = 0.30;
+
+      } else if (count === 4) {
+          probability = 0.20;
+
+      } else if (count === 5) {
+          probability = 0.15;
+
+      } else if (count === 6) {
+          probability = 0.50;
+
+      } else if (count === 7) {
+          probability = 0.15;
+
+      } else if (count === 8) {
+          probability = 0.10;
+      }
+
+      isEdgeCoin = Math.random() < probability;
+  }
+
+  // ★★★★★ ナナ図柄抽選：上限 2 個以下のときのみ ★★★★★
+  if (!isEdgeCoin && nanaCountOnScreen < 2) {
+
+      if (edgeCoinCollectedCount <= 6) {
+
+          if (Math.random() < 0.07) {
+              isNanaCoin = true;
+          }
+
+      }
+  }
+  // ★★★★★ ここまで絶対に3個以上に増えない ★★★★★
+
+
+  const minY = coinRadius * 2;
+  const maxY = canvas.height - coinRadius * 2;
+  const coinY = minY + Math.random() * (maxY - minY);
+  const coinX = canvas.width + coinRadius;
+  
+  coins.push({
+    x: coinX,
+    y: coinY,
+    radius: coinRadius,
+    size: coinRadius * 2,
+    rotation: 0,
+    isEdgeCoin: isEdgeCoin,
+    isNanaCoin: isNanaCoin,
+    collected: false
+  });
+}
+
+
+function updateCoins(delta) {
+
+  
+  if (!hasStarted) return;
+  
+  // === ShinCoin アニメーション更新 ===
+  shincoinFrameTimer += delta;
+  if (shincoinFrameTimer >= 100) {   // 100msごとに1フレーム進む
+    shincoinFrameIndex = (shincoinFrameIndex + 1) % shincoinFrameCount;
+    shincoinFrameTimer = 0;
+  }
+
+
+
+
+  const dt = delta / FRAME_TIME;
+  
+  const timeElapsed = gameStartTime === null ? 0 : performance.now() - gameStartTime;
+  const speedScale = Math.min(1.0, timeElapsed / SPEED_SCALE_TIME);
+  const currentSpeed = canvas.width * (BASE_SPEED_PER_WIDTH + BASE_SPEED_PER_WIDTH * speedScale);
+  
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const coin = coins[i];
+    coin.x -= currentSpeed * dt;
+    
+    if (coin.x + coin.radius < 0) {
+      coins.splice(i, 1);
+    }
+  }
+  
+  if (performance.now() - lastCoinSpawn > coinSpawnInterval) {
+    // EdgeCoin 100%スイッチがONの場合、EdgeCoin出現中は通常コインをスポーンさせない
+    const edgeCoinOnScreen = coins.some(coin => coin.isEdgeCoin && !coin.collected);
+    if (!forceEdgeCoin100 || !edgeCoinOnScreen) {
+        if (Math.random() < 0.6) {
+          spawnCoin();
+        }
+    }
+    lastCoinSpawn = performance.now();
+  }
+}
+
+// === EdgeCoin EQ Animation params ===
+let edgePulseStrength = 0;
+let edgeHaloStrength = 0;
+
+
+
+function drawCoins(delta) {
+    for (let coin of coins) {
+
+        // === EQ パルス計算 ===
+        let pulse = 1;
+        let halo = 0;
+
+        if (coin.isEdgeCoin && analyser && frequencyData) {
+            analyser.getByteFrequencyData(frequencyData);
+
+            const v1 = frequencyData[5] || 0;
+            const v2 = frequencyData[6] || 0;
+            const v3 = frequencyData[7] || 0;
+            const volume = (v1 + v2 + v3) / 3;
+
+            // 脈動（0.9〜1.3）
+            pulse = 0.9 + (volume / 255) * 0.40;
+
+            // 発光強度（0〜1）
+            halo = volume / 255;
+        }
+
+        const baseSize = coin.radius * 3;
+        const size = baseSize * pulse;
+
+        ctx.save();
+        ctx.translate(coin.x, coin.y);
+
+        // ============================
+        // ⭐ NanaCoin（ナナ図柄）
+        // ============================
+        if (coin.isNanaCoin) {
+
+            // ★ パルス発光（音連動はさせず、見た目安定）
+            const t = performance.now() / 250;
+            const pulseGlow = (Math.sin(t) + 1) / 2; // 0〜1
+            const glow = 25 + pulseGlow * 25;       // 25〜50
+
+            ctx.shadowBlur = glow;
+            ctx.shadowColor = "rgba(255, 80, 200, 0.95)"; // ピンク強めのネオン
+
+            ctx.drawImage(
+                images.nanazugaraImg,
+                -baseSize / 2,
+                -baseSize / 2,
+                baseSize,
+                baseSize
+            );
+
+            // リセット
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = "transparent";
+
+            ctx.restore();
+            continue;
+        }
+
+        // ============================
+        // ⭐ EdgeCoin 専用描画（既存）
+        // ============================
+        if (coin.isEdgeCoin) {
+
+            ctx.drawImage(
+                images.edgecoinImg,
+                -size / 2,
+                -size / 2,
+                size,
+                size
+            );
+
+            if (halo > 0.05) {
+                const maxR = size * (0.5 + halo * 0.5);
+                const grd = ctx.createRadialGradient(
+                    0, 0, size * 0.5,
+                    0, 0, maxR
+                );
+
+                grd.addColorStop(0.0, `rgba(${100 + halo * 155}, ${80}, 255, ${0.35 * halo})`);
+                grd.addColorStop(0.4, `rgba(180, 80, 255, ${0.30 * halo})`);
+                grd.addColorStop(0.7, `rgba(255, 80, 200, ${0.25 * halo})`);
+                grd.addColorStop(1.0, `rgba(255,255,255,${0.20 * halo})`);
+
+                ctx.globalAlpha = 0.9 * halo;
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(0, 0, maxR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+        } else {
+
+            // ============================
+            // ⭐ 通常 ShinCoin（既存）
+            // ============================
+            const sheet = images.shincoinSheet;
+            const frameHeight = sheet.height / shincoinFrameCount;
+            const sy = frameHeight * shincoinFrameIndex;
+
+            ctx.drawImage(
+                sheet,
+                0, sy,
+                sheet.width, frameHeight,
+                -coin.radius * pulse,
+                -coin.radius * pulse,
+                size,
+                size
+            );
+        }
+
+        ctx.restore();
+    }
+}
+   
+
+function checkCoinCollision() {
+    for (let i = coins.length - 1; i >= 0; i--) {
+        const coin = coins[i];
+        if (coin.collected) continue;
+
+        const dx = maru.x - coin.x;
+        const dy = maru.y - coin.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < maru.radius + coin.radius) {
+
+            // =====================================================
+            // ★★★ NanaCoin（ナナ図柄）専用ロジック（付与は後で） ★★★
+            // =====================================================
+           if (coin.isNanaCoin) {
+
+    // ★ ナナ専用SE（ここで鳴らす）
+    nanaSound.currentTime = 0;
+    nanaSound.play();
+
+                let r = Math.random();
+                let video = null;
+                let lifeUp = 0;
+
+                if (r < 0.50) {
+                    video = 'coinzoroi.mp4';
+                    lifeUp = 1;
+                } else if (r < 0.74) {
+                    video = 'maruhazure.mp4';
+                    lifeUp = 1;
+                } else if (r < 0.82) {
+                    video = 'maruzoroi01.mp4';
+                    lifeUp = 3;
+                } else if (r < 0.90) {
+                    video = 'maruzoroi02.mp4';
+                    lifeUp = 3;
+                } else if (r < 0.98) {
+                    video = 'maruzoroi03.mp4';
+                    lifeUp = 3;
+                } else if (r < 0.99) {
+                    video = 'nanazoroi.mp4';
+                    lifeUp = 7;
+                } else {
+                    video = 'fleeze.mp4';
+                    lifeUp = 7;
+                }
+
+                // ★ ここでは付与しない → 動画終了後に付与する
+                pendingNanaBonus = {
+                    life: lifeUp,
+                    isEdge: (video === 'coinzoroi.mp4')
+                };
+
+                currentVideoQueue = [];
+                playVideo(video);
+
+                coin.collected = true;
+                coins.splice(i, 1);
+                return;
+            }
+
+            // ============================
+            // ★ 通常の EdgeCoin（付与は後で）
+            // ============================
+            coin.collected = true;
+            coinSound.currentTime = 0;
+            coinSound.play();
+
+            if (coin.isEdgeCoin) {
+
+    // ★ 取った瞬間の付与を禁止 → 動画後に反映
+    pendingEdgeBonus = true;
+
+    let videoFile;
+    let nextVideoFile = null;
+
+    // ---- 10枚目の直前までの動画選択ロジック ----
+    if (edgeCoinCollectedCount === 0) {
+        videoFile = '01.mp4';
+    } else if (edgeCoinCollectedCount === 1) {
+        videoFile = '02.mp4';
+    } else if (edgeCoinCollectedCount === 2) {
+        videoFile = '03.mp4';
+    } else {
+        const movies = [
+            '01.mp4','02.mp4','03.mp4','04.mp4',
+            '05.mp4','06.mp4','07.mp4','08.mp4',
+            '09.mp4','10.mp4','11.mp4','12.mp4'
+        ];
+        const randomIndex = Math.floor(Math.random() * movies.length);
+        videoFile = movies[randomIndex];
+    }
+
+     // ------------------------------------------------------------
+        // ★★★【最適解】10枚目は動画を再生しない＆即カウントアップ ★★★
+        // ------------------------------------------------------------
+        if (edgeCoinCollectedCount === 9) {
+
+            edgeCoinCollectedCount++;
+            updateEdgeCoinDisplay();
+
+            coins.splice(i, 1);
+
+            console.log("★ 10枚目：即カウント → エンディングへ ★");
+            gameState = 'ending_trigger';
+
+            if (bgm) {
+                bgm.pause();
+                bgm.currentTime = 0;
+            }
+
+            startEndingSequence();
+            return;
+        }
+
+    // ------------------------------------------------------------
+    // ★★★ 通常の 1〜9 枚目は動画再生 ★★★
+    // ------------------------------------------------------------
+    currentVideoQueue = [];
+    if (nextVideoFile) currentVideoQueue.push(nextVideoFile);
+
+    playVideo(videoFile);
+    triggerEdgeCoinEffects(coin.x, coin.y);
+
+} else {
+    // ⭐ 通常コイン（従来通り）
+    score += 10;
+    totalRegularCoinsCollected += 1;
+    triggerScoreIncrease(10, coin.x, coin.y);
+
+    if (lives < MAX_LIVES + 10 && totalRegularCoinsCollected >= COINS_PER_LIFE) {
+        totalRegularCoinsCollected -= COINS_PER_LIFE;
+        lives += 1;
+        updateLivesDisplay();
+        showInfo('コインボーナス！+1 Life');
+    }
+}
+
+// 最後にコイン削除（動画再生しないときは上で削除済）
+coins.splice(i, 1);
+        }  // ← dist < の閉じ
+    }      // ← for の閉じ
+}          // ← 関数の閉じ
+
+
+function drawScoreBoard() {
+    const bar = document.getElementById("scoreBarContainer");
+    const rect = bar.getBoundingClientRect();
+    const now = performance.now();
+
+    ctx.save();
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+
+    // Base font size and weight
+    const baseFontSize = canvas.height * 0.033;
+    ctx.font = `900 ${baseFontSize}px Arial`;
+
+    // Smoothly interpolate pop scale
+    scorePopScale += (scorePopTarget - scorePopScale) * scorePopSpeed;
+
+    // Helper to draw glowing text with scaling and customizable colors
+    function drawGlowText(text, x, y, options = {}) {
+      const scale = options.scale || 1;
+      const fill = options.fillStyle || "white";
+      const glow = options.glowColor || "cyan";
+      const strokeCol = options.strokeColor || "black";
+      const lineW = options.lineWidth || baseFontSize * 0.18;
+      const blur = options.shadowBlur || baseFontSize * 0.55;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      ctx.translate(-x, -y);
+      ctx.lineWidth = lineW;
+      ctx.strokeStyle = strokeCol;
+      ctx.strokeText(text, x, y);
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = blur;
+      ctx.fillStyle = fill;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    // --------- Draw score (left) with pop and combo rainbow ---------
+    const scoreX = rect.left + rect.width * 0.01;
+    const scoreY = rect.top + rect.height * 0.55;
+    if (now < rainbowEffectEnd) {
+      // Dynamic rainbow hue cycling
+      const hue = ((now / 10) % 360);
+      const color = `hsl(${hue},100%,60%)`;
+      drawGlowText(
+        score.toString(),
+        scoreX,
+        scoreY,
+        {
+          scale: scorePopScale,
+          fillStyle: color,
+          glowColor: color,
+          lineWidth: baseFontSize * 0.18,
+          shadowBlur: baseFontSize * 0.7
+        }
+      );
+    } else {
+      drawGlowText(
+        score.toString(),
+        scoreX,
+        scoreY,
+        {
+          scale: scorePopScale,
+          fillStyle: "white",
+          glowColor: "cyan"
+        }
+      );
+    }
+
+    // --------- Draw EdgeCoin counter (center) with flash ---------
+    const edgeX = rect.left + rect.width * 0.65;
+    const edgeY = rect.top + rect.height * 0.55;
+    // Determine flash strength (0 to 1)
+    let ecStrength = 0;
+    if (edgeCoinFlashEnd > now) {
+      ecStrength = Math.max(0, Math.min(1, (edgeCoinFlashEnd - now) / 1000));
+    }
+    // Adjust blur based on flash strength
+    const edgeShadow = baseFontSize * (0.70 + 1.8 * ecStrength);
+    ctx.save();
+    ctx.lineWidth = baseFontSize * 0.20;
+    ctx.strokeStyle = "black";
+    ctx.strokeText(`${edgeCoinCollectedCount}/${GOAL_COUNT}`, edgeX, edgeY);
+    ctx.shadowColor = "#00ff99";
+    ctx.shadowBlur = edgeShadow;
+    ctx.fillStyle = "#00ff55";
+    ctx.fillText(`${edgeCoinCollectedCount}/${GOAL_COUNT}`, edgeX, edgeY);
+    ctx.restore();
+
+    // --------- Draw lives (right) with shake ---------
+    const lifeBaseX = rect.left + rect.width * 1.40;
+    const lifeY = rect.top + rect.height * 0.55;
+    let shakeX = 0;
+    if (lifeShakeEnd > now) {
+      const remaining = lifeShakeEnd - now;
+      const duration = 350; // ms
+      const progress = Math.max(0, 1 - remaining / duration);
+      // Oscillate and dampen
+      shakeX = lifeShakeAmplitude * Math.sin(progress * Math.PI * 6) * (1 - progress);
+    }
+    drawGlowText(
+      lives.toString(),
+      lifeBaseX + shakeX,
+      lifeY,
+      {
+        scale: 1.0,
+        fillStyle: "white",
+        glowColor: "cyan"
+      }
+    );
+
+    // --------- Pulsing outline for the score bar ---------
+    const pulsePeriod = 2000; // ms
+    const phase = (now % pulsePeriod) / pulsePeriod;
+    let pulseAlpha;
+    if (phase < 0.5) {
+      pulseAlpha = (phase / 0.5) * 0.25;
+    } else {
+      pulseAlpha = ((1 - phase) / 0.5) * 0.25;
+    }
+    pulseAlpha = 0;
+
+    ctx.save();
+    ctx.lineWidth = baseFontSize * 0.12;
+    ctx.strokeStyle = `rgba(0,255,255,${pulseAlpha.toFixed(3)})`;
+    ctx.shadowColor = `rgba(0,255,255,${pulseAlpha.toFixed(3)})`;
+    ctx.shadowBlur = baseFontSize * 1.2;
+    ctx.strokeRect(rect.left, rect.top, rect.width, rect.height);
+    ctx.restore();
+
+    // ★★★ EdgeCoin 10枚目までの100秒カウントダウン表示 ★★★
+if (edgeCoinCollectedCount === 9 && edgeCountdownEndTime) {
+    const now = performance.now();
+    let remaining = Math.max(0, Math.floor((edgeCountdownEndTime - now) / 1000));
+
+    ctx.save();
+
+    // 基本フォント設定
+    ctx.font = `900 ${canvas.height * 0.05}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 6;
+
+    // ===== 通常カラー（11秒以上） =====
+    let fill = "yellow";
+    let stroke = "black";
+    let shadow = "rgba(0,0,0,0.8)";
+    let blur = canvas.height * 0.01;
+
+    // ===== ★ ラスト10秒で光量アップ＋点滅 =====
+    if (remaining <= 10) {
+        // 点滅（速さ：200ms周期）
+        const flash = Math.floor(now / 200) % 2 === 0;
+
+        fill = flash ? "white" : "yellow";
+        stroke = flash ? "red" : "black";
+
+        // 光量（シャドウ）強烈に
+        shadow = "rgba(255, 80, 80, 1)";
+        blur = canvas.height * 0.06;
+    }
+
+    // ===== 反映 =====
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
+    ctx.shadowColor = shadow;
+    ctx.shadowBlur = blur;
+
+    // ===== 描画 =====
+    ctx.strokeText(`NEXT EDGE: ${remaining}s`, canvas.width / 2, canvas.height * 0.15);
+    ctx.fillText(`NEXT EDGE: ${remaining}s`, canvas.width / 2, canvas.height * 0.15);
+
+    ctx.restore();
+}
+
+
+
+
+    ctx.restore();
+}
+
+
+function drawObstacle(ob, timestamp) {
+  const oscillation = Math.sin((timestamp / 1000) * 2 + ob.phase) * ob.amplitude;
+  const gapY = ob.baseGapY + oscillation;
+  const gapHeight = ob.gapHeight;
+  const topBodyHeight = gapY;
+  const wickTopHeight = topBodyHeight * ob.wickTopRatio; 
+  const bottomBodyY = gapY + gapHeight;
+  const bottomBodyHeight = canvas.height - bottomBodyY;
+  const wickBottomHeight = bottomBodyHeight * ob.wickBottomRatio;
+
+  // ---- Rich candle drawing ----
+  // Draw top (red) body with gradient, shadow and border
+  ctx.save();
+  const gradTop = ctx.createLinearGradient(ob.x, 0, ob.x, topBodyHeight);
+  gradTop.addColorStop(0, '#e44a4a');
+  gradTop.addColorStop(1, '#ff8f8f');
+  ctx.fillStyle = gradTop;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 4;
+  ctx.fillRect(ob.x, 0, ob.width, topBodyHeight);
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.strokeRect(ob.x, 0, ob.width, topBodyHeight);
+  ctx.restore();
+
+  // Draw bottom (green) body with gradient, shadow and border
+  ctx.save();
+  const gradBot = ctx.createLinearGradient(ob.x, bottomBodyY, ob.x, bottomBodyY + bottomBodyHeight);
+  gradBot.addColorStop(0, '#2ca24c');
+  gradBot.addColorStop(1, '#6aff8a');
+  ctx.fillStyle = gradBot;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 4;
+  ctx.fillRect(ob.x, bottomBodyY, ob.width, bottomBodyHeight);
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.strokeRect(ob.x, bottomBodyY, ob.width, bottomBodyHeight);
+  ctx.restore();
+
+  // Draw top wick (thinner and brighter)
+  ctx.save();
+  {
+    const wickWidthTop = ob.width * 0.06;
+    const topWickColor = lightenColor('#e44a4a', 0.4);
+    ctx.fillStyle = topWickColor;
+    ctx.fillRect(
+      ob.x + (ob.width - wickWidthTop) / 2,
+      topBodyHeight,
+      wickWidthTop,
+      wickTopHeight
+    );
+  }
+  ctx.restore();
+
+  // Draw bottom wick (thinner and brighter)
+  ctx.save();
+  {
+    const wickWidthBottom = ob.width * 0.06;
+    const bottomWickColor = lightenColor('#2ca24c', 0.4);
+    ctx.fillStyle = bottomWickColor;
+    ctx.fillRect(
+      ob.x + (ob.width - wickWidthBottom) / 2,
+      bottomBodyY - wickBottomHeight,
+      wickWidthBottom,
+      wickBottomHeight
+    );
+  }
+  ctx.restore();
+}
+
+function checkCollision(ob, timestamp) {
+  if (isDebugMode) {
+      return false;
+  }
+  
+  if (maru.y - maru.radius > canvas.height) {
+    lives = 0; 
+    endGame(); 
+    return true;
+  }
+
+  const oscillation = Math.sin((timestamp / 1000) * 2 + ob.phase) * ob.amplitude;
+  const gapY = ob.baseGapY + oscillation;
+  const gapHeight = ob.gapHeight;
+  const maruWidth = maru.radius * 2;
+  const maruHeight = maru.radius * 2;
+  const hbWidth = maruWidth * 0.2;
+  const hbHeight = maruHeight * 0.8;
+  const hbX = maru.x - (hbWidth / 2) + maruWidth * 0.10;
+  const hbY = maru.y - maru.radius + maruHeight * 0.10;
+  const maruRect = { x: hbX, y: hbY, w: hbWidth, h: hbHeight };
+
+  let collision = false;
+  if (maruRect.x + maruRect.w > ob.x && maruRect.x < ob.x + ob.width) {
+    if (maruRect.y < gapY || maruRect.y + maruRect.h > gapY + gapHeight) {
+      collision = true;
+    }
+  }
+  
+  if (collision && !isInvincible) {
+    lives -= 1; 
+    // Trigger life shake animation on life loss
+    triggerLifeShake();
+    updateLivesDisplay(); 
+    
+    if (lives <= 0) {
+      endGame();
+      return true;
+    } else {
+      hitSound.currentTime = 0;
+      hitSound.play();
+      
+      isInvincible = true;
+      invincibilityEndTime = timestamp + INVINCIBILITY_DURATION;
+      
+      const isFileProtocol = window.location.protocol === 'file:' || window.location.protocol === '';
+      if (bgm && !isFileProtocol && bgm.paused && bgm.getAttribute('src')) {
+         bgm.play().catch(e => console.error("BGM resume failed after hit:", e));
+      }
+      
+      return true; 
+    }
+  }
+  
+  return false;
+}
+
+function drawMaru(timestamp) {
+  const maruSize = maru.radius * 2;
+  let imageToDraw = maru.currentImage;
+  let flashing = false;
+  
+  if (isInvincible) {
+    if (timestamp > invincibilityEndTime) {
+      isInvincible = false;
+    } else {
+      const flashRate = 100;
+      if (Math.floor(timestamp / flashRate) % 2 === 0) {
+        flashing = true; 
+      }
+    }
+  }
+
+  if (flashing) {
+    return; 
+  }
+  
+  if (gameState === 'playing' || gameState === 'start') {
+      if (timestamp - lastIdleSwitch > idleFrameInterval) {
+        idleFrameIndex = (idleFrameIndex + 1) % maruIdleFrames.length;
+        lastIdleSwitch = timestamp;
+      }
+      
+      if (maru.vy < 0) {
+        imageToDraw = images.maruJumpImg;
+      } else {
+        imageToDraw = maruIdleFrames[idleFrameIndex];
+      }
+  } 
+  
+  ctx.drawImage(imageToDraw, maru.x - maru.radius, maru.y - maru.radius, maruSize, maruSize);
+  // Apply flash overlay when maruFlashEnd is active
+  if (maruFlashEnd > timestamp) {
+    const progress = (maruFlashEnd - timestamp) / 300;
+    ctx.save();
+    const grd = ctx.createRadialGradient(maru.x, maru.y, 0, maru.x, maru.y, maru.radius);
+    const alpha = Math.max(0, progress);
+    grd.addColorStop(0, `rgba(255,255,255,${alpha * 0.8})`);
+    grd.addColorStop(1, `rgba(0,255,128,0)`);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(maru.x, maru.y, maru.radius * 1.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+
+let lastTimestamp = null;
+let animFrameId = null;
+
+// Audio setup and other supporting functions are the same as before, ensuring game logic continuity.
+function setupAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const isFilePage = window.location.protocol === 'file:' || window.location.protocol === '';
+      const srcAttr = bgm ? bgm.getAttribute('src') : null;
+      const isRemoteSrc = srcAttr && /^https?:\/\//i.test(srcAttr);
+      const useAnalyser = !isFilePage || (isFilePage && isRemoteSrc);
+      
+      if (useAnalyser) {
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        const source = audioCtx.createMediaElementSource(bgm);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      } else {
+        analyser = null;
+        frequencyData = null;
+      }
+    } catch (e) {
+      console.warn('Web Audio API initialisation failed:', e);
+      analyser = null;
+      frequencyData = null;
+    }
+  }
+}
+function initStars() {
+  stars = [];
+  const density = 1 / 8000;
+  const numStars = Math.floor(canvas.width * canvas.height * density);
+  for (let i = 0; i < numStars; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * 0.8,
+      size: Math.random() * 1.5 + 0.5,
+      speed: Math.random() * 0.3 + 0.1,
+      baseBrightness: Math.random() * 0.5 + 0.2,
+      twinkleSpeed: Math.random() * 0.04 + 0.01,
+      twinklePhase: Math.random() * Math.PI * 2
+    });
+  }
+}
+function updateStars(delta) {
+  const dt = delta / FRAME_TIME;
+  for (const star of stars) {
+    star.x -= star.speed * dt;
+    if (star.x < -star.size) {
+      star.x += canvas.width + star.size;
+      star.y = Math.random() * canvas.height * 0.8;
+    }
+  }
+}
+function drawStars(timestamp) {
+  ctx.save();
+  for (const star of stars) {
+    const twinkle = 0.4 * Math.sin((timestamp * star.twinkleSpeed) + star.twinklePhase);
+    // Additional brightness when a score event occurs
+    let extra = 0;
+    if (starFlashEnd > timestamp) {
+      const remaining = starFlashEnd - timestamp;
+      extra = Math.max(0, Math.min(0.5, (remaining / 500) * 0.5));
+    }
+    let alpha = star.baseBrightness + twinkle + extra;
+    if (alpha > 1) alpha = 1;
+    ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawEqualizer() {
+    if (!analyser || !frequencyData) return;
+
+    analyser.getByteFrequencyData(frequencyData);
+
+    const barCount = 32;   // 表示バー数
+    const barWidth = canvas.width / (barCount * 1.5);
+    const startX = canvas.width * 0.1;
+    const baseY = canvas.height * 0.96;
+
+    for (let i = 0; i < barCount; i++) {
+        const value = frequencyData[i];  
+        const barHeight = (value / 255) * (canvas.height * 0.25);
+
+        ctx.save();
+        ctx.fillStyle = `rgba(${100 + value}, 50, 255, 0.8)`;  
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "cyan";
+        ctx.fillRect(
+            startX + i * barWidth * 1.5,
+            baseY - barHeight,
+            barWidth,
+            barHeight
+        );
+        ctx.restore();
+    }
+}
+function drawBackground(timestamp) {
+
+  // --- 背景グラデ（中央明るい → 外側暗い）---
+  const radGrad = ctx.createRadialGradient(
+    canvas.width / 2,
+    canvas.height * 0.8,
+    0,
+    canvas.width / 2,
+    canvas.height * 0.8,
+    canvas.height
+  );
+  radGrad.addColorStop(0, '#1e5fff');
+  radGrad.addColorStop(0.4, '#153054');
+  radGrad.addColorStop(1, '#060b18');
+
+  ctx.fillStyle = radGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // --- 星 ---
+  drawStars(timestamp);
+
+  // --- 波パラメータ ---
+  const baseY = canvas.height * 0.75;
+  const waveLength = canvas.width * 0.5;
+
+  // ★ 前に進む波オフセット
+  if (typeof drawBackground.waveShift === "undefined") {
+      drawBackground.waveShift = 0;
+  }
+  drawBackground.waveShift += 0.6;
+  const offset1 = drawBackground.waveShift;
+
+  // === 1つ目の波（奥） ===
+  ctx.save();
+  ctx.fillStyle = 'rgba(20, 63, 107, 0.9)';
+  ctx.beginPath();
+  ctx.moveTo(0, baseY);
+  for (let x = 0; x <= canvas.width; x += 4) {
+      const y = baseY + canvas.height * 0.04 *
+          Math.sin((x + offset1) * 2 * Math.PI / waveLength);
+      ctx.lineTo(x, y);
+  }
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.lineTo(0, canvas.height);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // === 蛍光の波ライン ===
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,255,0.6)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= canvas.width; x += 4) {
+      const y = baseY + canvas.height * 0.04 *
+          Math.sin((x + offset1) * 2 * Math.PI / waveLength);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // === 2つ目の波（手前） ===
+  const offset2 = offset1 * 1.2;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(14, 46, 82, 0.9)';
+  ctx.beginPath();
+  ctx.moveTo(0, baseY + canvas.height * 0.04);
+
+  for (let x = 0; x <= canvas.width; x += 4) {
+      const y = baseY + canvas.height * 0.04 +
+          canvas.height * 0.025 *
+          Math.sin((x + offset2) * 2 * Math.PI / waveLength);
+      ctx.lineTo(x, y);
+  }
+
+  ctx.lineTo(canvas.width, canvas.height);
+  ctx.lineTo(0, canvas.height);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+
+
+
+
+}function updateMaru(delta, timestamp) {
+  if (!hasStarted) return;
+  const dt = delta / FRAME_TIME;
+  maru.vy += GRAVITY * dt;
+  maru.y += maru.vy * dt;
+}
+function updateObstacles(delta) {
+  if (!hasStarted) return;
+  const dt = delta / FRAME_TIME;
+
+  const timeElapsed = gameStartTime === null ? 0 : performance.now() - gameStartTime;
+  const speedScale = Math.min(1.0, timeElapsed / SPEED_SCALE_TIME); 
+  const currentSpeed = canvas.width * (BASE_SPEED_PER_WIDTH + BASE_SPEED_PER_WIDTH * speedScale);
+  
+  const difficultyTime = 60000; 
+  const difficultyFactor = Math.min(1, timeElapsed / difficultyTime); 
+  const baseSpawnInterval = 2500;
+  const minSpawnInterval = 700;
+  spawnInterval = baseSpawnInterval - (baseSpawnInterval - minSpawnInterval) * difficultyFactor;
+  
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.x -= currentSpeed * dt;
+    if (ob.x + ob.width < 0) {
+      obstacles.splice(i, 1);
+    }
+  }
+
+  if (performance.now() - lastSpawn > spawnInterval) {
+    spawnObstacle(); 
+    lastSpawn = performance.now();
+  }
+}
+
+// gameLoop, endGame, showInfo function are the same as before
+
+
+function gameLoop(timestamp) {
+  
+ if (gameState !== 'playing') {
+    // video のときだけループを止める
+    if (gameState === 'video' || gameState === 'ending_trigger') return;
+}
+
+  if (lastTimestamp === null) {
+    lastTimestamp = timestamp;
+  }
+  const delta = timestamp - lastTimestamp;
+  lastTimestamp = timestamp;
+
+  updateStars(delta);
+  updateMaru(delta, timestamp);
+  // Update afterimages after maru moves
+  updateAfterimages(delta);
+  updateObstacles(delta);
+  updateCoins(delta);
+  // Update particle effects after coin updates
+  updateParticles(delta);
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground(timestamp);
+ 
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    drawObstacle(ob, timestamp);
+    if (gameState === 'playing') {
+      checkCollision(ob, timestamp); 
+      // ⭐ 【修正】衝突チェック後、エンディング移行チェックをしない
+    }
+    
+    if (!ob.passed && ob.x + ob.width < maru.x - maru.radius) {
+      ob.passed = true;
+      score += 1;
+      // Trigger score increase effects when passing an obstacle
+      triggerScoreIncrease(1, maru.x, maru.y);
+    }
+  }
+  
+  // Draw particles behind coins and maru
+  drawParticles();
+  // Draw afterimages behind Maru
+  drawAfterimages();
+  drawMaru(timestamp);
+  drawCoins(delta);
+  drawEqualizer();   
+  
+  if (gameState === 'playing') {
+    checkCoinCollision();
+    // ⭐ 【修正】コイン衝突チェック後、エンディング移行チェックをしない
+  }
+  
+ 
+  if (nextMessageIndex < messages.length && score >= messages[nextMessageIndex].threshold) {
+    showInfo(messages[nextMessageIndex].text);
+    nextMessageIndex++;
+  }
+  
+  // ★★★★★ ここに追加！ ★★★★★
+  drawScoreBoard();
+  // ★★★★★ ここに追加！ ★★★★★
+
+  
+  if (gameState === 'playing') {
+    animFrameId = window.requestAnimationFrame(gameLoop);
+  }
+}
+
+
+
+
+function initBGM() {
+    // AudioContext 初期化（2回目以降はスキップ）
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;  // EQ の解像度
+        frequencyData = new Uint8Array(analyser.frequencyBinCount);
+    }
+
+    const bgm = document.getElementById("bgm");
+    if (!bgm) return;
+
+    const source = audioCtx.createMediaElementSource(bgm);
+
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    // 再生
+    bgm.currentTime = 0;
+    bgm.play();
+}
+
+
+
+function endGame() {
+  if (gameState !== 'playing') return; 
+  gameState = 'gameover';
+  
+  if (animFrameId !== null) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+  
+  maru.currentImage = images.maruYarareImg; 
+  
+  const finalTimestamp = performance.now();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBackground(finalTimestamp);
+  
+  hitSound.currentTime = 0;
+  hitSound.play();
+  
+  if (score > bestScore) bestScore = score;
+  
+  // 🌟 修正: 最終スコア表示に EdgeXコイン収集数を含める
+  finalScoreElem.innerHTML = `スコア: <strong>${score}</strong><br>ベストスコア: <strong>${bestScore}</strong><br>EDGEXコイン収集数: <strong>${edgeCoinCollectedCount}/${GOAL_COUNT}</strong>`;
+  
+  const tweetText = encodeURIComponent(`我玩了 #MARUWAVEX\n#edgeX\nSCORE: ${score}\nEdgeCoin ${edgeCoinCollectedCount}/${GOAL_COUNT}\n`
+);
+  const url = encodeURIComponent("URL後日追加");
+  tweetButton.href = `https://twitter.com/intent/tweet?text=${tweetText}&hashtags=MARUWAVEX&url=${url}`;
+
+  gameOverMsg.style.display = 'flex';
+  overlay.style.pointerEvents = 'auto';
+  // 🌟 修正: スコア表示を非表示にする必要がないため、空にしない
+  
+  if (bgm) {
+    bgm.pause();
+    bgm.currentTime = 0;
+  }
+}
+
+
+function showInfo(text) {
+  infoMsg.textContent = text;
+  infoMsg.style.display = 'block';
+  setTimeout(() => {
+    infoMsg.style.display = 'none';
+  }, 2000);
+}
+
+// ---------------------------------------------------------------------------
+// 🎆✨ Additional helper functions for rich visual effects
+// These functions implement particle systems, afterimages, combo effects,
+// edge coin flashes, life shaking, and star pulsing. They are called from
+// various game logic locations to trigger and update the animations.
+// ---------------------------------------------------------------------------
+
+// Trigger a generic score increase. Handles pop scale, combo streak and star flash.
+function triggerScoreIncrease(amount, x, y) {
+  // Start the pop animation
+  scorePopScale = 1.4;
+  scorePopTarget = 1.0;
+  // Determine combo streak
+  const now = performance.now();
+  if (now - lastScoreUpdateTime < 800) {
+    scoreStreakCount++;
+  } else {
+    scoreStreakCount = 1;
+  }
+  lastScoreUpdateTime = now;
+  if (scoreStreakCount >= 3) {
+    // Activate rainbow effect for 1 second
+    rainbowEffectEnd = now + 1000;
+  }
+  // Briefly brighten the stars
+  starFlashEnd = now + 500;
+  // Spawn a small particle burst at the provided location if supplied
+  if (typeof x === 'number' && typeof y === 'number') {
+    spawnParticleBurst(x, y, false);
+  }
+}
+
+// Trigger special effects for collecting an EdgeCoin
+function triggerEdgeCoinEffects(x, y) {
+  const now = performance.now();
+  // Flash the central counter for 1 second
+  edgeCoinFlashEnd = now + 1000;
+  // Flash the maru character for 0.3 seconds
+  maruFlashEnd = now + 300;
+  // Brighten the stars a bit longer
+  starFlashEnd = now + 700;
+  // Spawn a larger particle burst with edge colors
+  if (typeof x === 'number' && typeof y === 'number') {
+    spawnParticleBurst(x, y, true);
+  }
+}
+
+// Spawn a burst of particles at (x, y). If isEdge is true, use green palette.
+function spawnParticleBurst(x, y, isEdge) {
+  const count = isEdge ? 15 : 10;
+  const radius = isEdge ? 40 : 20;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (Math.random() * 0.4 + 0.6) * radius;
+    const sx = Math.cos(angle) * speed;
+    const sy = Math.sin(angle) * speed;
+    particles.push({
+      x: x,
+      y: y,
+      vx: sx,
+      vy: sy,
+      age: 0,
+      life: 0.4,
+      size: isEdge ? 6 : 4,
+      startColor: isEdge ? { r: 0, g: 255, b: 153 } : { r: 255, g: 215, b: 0 },
+      endColor: isEdge ? { r: 0, g: 102, b: 68 } : { r: 255, g: 127, b: 0 }
+    });
+  }
+}
+
+// Update all particles
+function updateParticles(delta) {
+  const dt = delta / 1000;
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.age += dt;
+    // Apply slight deceleration
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    if (p.age > p.life) {
+      particles.splice(i, 1);
+    }
+  }
+}
+
+// Draw all particles
+function drawParticles() {
+  for (const p of particles) {
+    const t = p.age / p.life;
+    const r = p.startColor.r + (p.endColor.r - p.startColor.r) * t;
+    const g = p.startColor.g + (p.endColor.g - p.startColor.g) * t;
+    const b = p.startColor.b + (p.endColor.b - p.startColor.b) * t;
+    const alpha = 1 - t;
+    const size = p.size * (1 - t * 0.5);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// Trigger shake animation for life counter
+function triggerLifeShake() {
+  lifeShakeEnd = performance.now() + 350; // duration in ms
+  lifeShakeAmplitude = 8 + Math.random() * 4;
+}
+
+// Spawn afterimages when Maru jumps
+function spawnAfterimages() {
+  const count = 1 + Math.floor(Math.random() * 2);
+  for (let i = 0; i < count; i++) {
+    afterimages.push({
+      x: maru.x,
+      y: maru.y,
+      radius: maru.radius,
+      image: maru.currentImage,
+      startTime: performance.now(),
+      life: 250
+    });
+  }
+}
+
+// Update afterimages (remove old ones)
+function updateAfterimages(delta) {
+  const now = performance.now();
+  for (let i = afterimages.length - 1; i >= 0; i--) {
+    const ai = afterimages[i];
+    if (now - ai.startTime > ai.life) {
+      afterimages.splice(i, 1);
+    }
+  }
+}
+
+// Draw afterimages behind Maru
+function drawAfterimages() {
+  const now = performance.now();
+  for (const ai of afterimages) {
+    const progress = (now - ai.startTime) / ai.life;
+    const alpha = Math.max(0, 1 - progress);
+    const scale = 1 + progress * 0.2;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.5;
+    const size = ai.radius * 2 * scale;
+    ctx.drawImage(ai.image, ai.x - ai.radius * scale, ai.y - ai.radius * scale, size, size);
+    ctx.restore();
+  }
+}
+
+
+
+
+
+function preloadImages() {
+    return new Promise((resolve) => {
+        let loadedCount = 0;
+        // 修正: sealLifeImgをカウントから除外（HTML内の参照はそのまま）
+        const totalCount = Object.keys(imageSources).length - 1; 
+        
+        // 外部画像（スタート/ゲームオーバー/スコアバー）を含めてカウント
+        const totalImages = totalCount + 3; 
+
+        if (totalImages === 0) {
+            resolve();
+            return;
+        }
+
+        const imageLoaded = () => {
+            loadedCount++;
+            if (loadedCount === totalImages) {
+                resolve();
+            }
+        };
+
+        // 内部ゲーム画像
+        for (const key in imageSources) {
+            // sealLifeImg はカウントしない
+            if (key === 'sealLifeImg') continue;
+
+            const img = images[key];
+            if (img.complete) {
+                imageLoaded();
+            } else {
+                img.onload = imageLoaded;
+                img.onerror = () => {
+                    console.warn(`Failed to load image: ${imageSources[key]}.`);
+                    imageLoaded(); 
+                };
+            }
+        }
+        
+        // スタート画面画像（HTMLタグで参照されているもの）
+        const startImgElement = document.getElementById('startImage');
+
+        if (startImgElement) {
+            startImgElement.onload = imageLoaded;
+            startImgElement.onerror = imageLoaded;
+        } else {
+            imageLoaded();
+        }
+
+        
+        // ゲームオーバー画面画像（HTMLタグで参照されているもの）
+        const gameOverImg = document.getElementById('gameOverImage');
+        if (gameOverImg) {
+            gameOverImg.onload = imageLoaded;
+            gameOverImg.onerror = imageLoaded; 
+        } else {
+            imageLoaded();
+        }
+        
+        // スコアバー画像（HTMLタグで参照されているもの）
+        const scoreBarImg = document.getElementById('scoreBarImage');
+        if (scoreBarImg) {
+            scoreBarImg.onload = imageLoaded;
+            scoreBarImg.onerror = imageLoaded; 
+        } else {
+            imageLoaded();
+        }
+        
+        // sealLifeImg は動的表示に利用しないが、imgタグが存在するため、プリロードリストから除外
+        
+    });
+}
+
+// Event listeners
+function handleGameInput(e) {
+    if (e.target.closest('#restartButton') ||
+        e.target.closest('#tweetButton') ||
+        e.target.closest('#skipButton') ||
+        e.target.closest('#startButton') || // スタートボタンのクリックは含めない
+        e.target.closest('#debugButton')) {
+        return;
+    }
+    
+    if (gameState === 'playing' || gameState === 'start') {
+        jump();
+    } 
+    
+    if (e.type === 'touchstart') {
+        e.preventDefault(); 
+    }
+}
+
+// -------------------------------
+// 🔥 キーボード入力によるジャンプ（スペースキー）
+// -------------------------------
+document.addEventListener('keydown', (e) => {
+    // スペースキー (keyCode 32) または (key ' ' / 'Spacebar') の場合
+    if (e.code === 'Space' || e.keyCode === 32) {
+        // デフォルトのスクロール動作などを防ぐ
+        e.preventDefault(); 
+        
+        if (gameState === 'playing' || gameState === 'start') {
+            jump();
+        }
+    }
+});
+
+document.addEventListener('mousedown', handleGameInput);
+document.addEventListener('touchstart', handleGameInput);
+
+skipButton.addEventListener('click', skipVideo);
+skipButton.addEventListener('touchstart', (e) => {
+    e.preventDefault(); 
+    skipVideo();
+});
+
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+});
+
+// -------------------------------
+// 🔥 デバッグボタン 10連タップで起動
+// -------------------------------
+let debugTapCount = 0;
+let debugTapTimer = null;
+
+debugButton.addEventListener("click", () => {
+    debugTapCount++;
+
+    // 60秒以内に105タップ必要
+    if (!debugTapTimer) {
+        debugTapTimer = setTimeout(() => {
+            debugTapCount = 0;
+            debugTapTimer = null;
+        }, 60000);
+    }
+
+    if (debugTapCount >= 77) {
+        clearTimeout(debugTapTimer);
+        debugTapTimer = null;
+        debugTapCount = 0;
+
+        console.log("DEBUG MODE UNLOCKED");
+        initGame(true); // ← デバッグモード起動
+        // ⭐ 【追加】デバッグモード起動時にEdgeCoin 100%スイッチをONにする
+        forceEdgeCoin100 = true;
+        showInfo('DEBUG: EdgeCoin 100% ON');
+    }
+});
+
+
+
+
+
+// 🌟 初期化
+preloadImages().then(() => {
+    // 🌟 画像ボタンのイベントリスナーを設定
+    document.getElementById('startButton').addEventListener('click', () => {
+    initBGM();         // ← 追加（これがイコライザーに絶対必要）
+    initGame(false);
+});
+    restartButton.addEventListener('click', () => {
+      initGame(isDebugMode);
+    });
+    
+    resize();
+    drawBackground(performance.now());
+    drawMaru(performance.now()); 
+    
+});
+   // -------------------------------------------------
+// ⭐ 【完全版】エンディングシーケンス
+// -------------------------------------------------
+function startEndingSequence() {
+    skipButton.style.display = 'none';
+
+    // -----------------------------------------
+    // ⭐ BGM停止（念のため確実に止める）
+    // -----------------------------------------
+    if (bgm) {
+        try {
+            bgm.pause();
+            bgm.currentTime = 0;
+        } catch (e) {
+            console.error("Failed to stop BGM:", e);
+        }
+    }
+
+    // -----------------------------------------
+    // ⭐ ① エンディング動画（end.mp4）を再生
+    //     ※この動画は「1本化されている」前提
+    // -----------------------------------------
+    playVideoDirect("movies/end.mp4", () => {
+        // ※終了後に何かする必要はない
+    });
+
+    // -----------------------------------------
+    // ⭐ ② 5.5秒後に ending.mp3 を再生
+    // -----------------------------------------
+    setTimeout(() => {
+        try {
+            const endingBgm = new Audio("sounds/bgm/ending.mp3");
+            endingBgm.volume = 1.0;
+            endingBgm.play().catch(e => console.error("ending.mp3 play failed:", e));
+        } catch (e) {
+            console.error("Failed to play ending.mp3:", e);
+        }
+    }, 5500);
+
+
+    // -----------------------------------------
+    // ⭐ ③ end.mp4 の長さに合わせて、
+    //     動画終了後にエンディング結果UIを出す
+    //
+    // 🔥重要：
+    //  end.mp4 の長さが「約10秒」前提なら 10000ms 後に実行
+    //  必要ならあなたの end.mp4 の秒数に合わせて調整できる
+    // -----------------------------------------
+    const ENDING_VIDEO_DURATION = 20000; // ←必要なら調整
+
+    setTimeout(() => {
+        showEndingResultUI();
+    }, ENDING_VIDEO_DURATION);
+
+}
+
+function showEndingResultUI() {
+
+    // 1) 結果表示オーバーレイ
+    const overlay = document.createElement("div");
+    overlay.id = "endingResultOverlay";
+    overlay.style.position = "absolute";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.75)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "9999";
+    overlay.style.textAlign = "center";
+
+    // 2) スコア表示（新デザイン）
+    const scoreText = document.createElement("div");
+    scoreText.innerHTML = `
+        <div class="endingText">SCORE: ${score}</div>
+        <div class="endingSub">EDGE COIN: ${edgeCoinCollectedCount}/${GOAL_COUNT}</div>
+    `;
+    overlay.appendChild(scoreText);
+
+    // 3) Tweet ボタン（新デザイン）
+    const tweetBtn = document.createElement("a");
+    tweetBtn.textContent = "Tweet";
+    tweetBtn.className = "tweetBtn";   // ★★★ CSS適用のため絶対必要 ★★★
+
+    tweetBtn.target = "_blank";
+    tweetBtn.href =
+        `https://twitter.com/intent/tweet?text=` +
+        encodeURIComponent(
+            `我通关了 #MARUWAVEX\n#edgeX\nSCORE: ${score}\nEdgeCoin ${edgeCoinCollectedCount}/${GOAL_COUNT}\n`
+        );
+
+    overlay.appendChild(tweetBtn);
+
+    document.body.appendChild(overlay);
+}
+
+
+
+</script>
+<!-- ★★★ ここまでエンディング専用コード 完全版 ★★★ -->
+</body>
+</html>
